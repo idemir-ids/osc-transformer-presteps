@@ -3,252 +3,271 @@
 On June 26 2024, Linux Foundation announced the merger of its financial services umbrella, the Fintech Open Source Foundation (FINOS <https://finos.org>), with OS-Climate, an open source community dedicated to building data technologies, modelling, and analytic tools that will drive global capital flows into climate change mitigation and resilience; OS-Climate projects are in the process of transitioning to the FINOS governance framework <https://community.finos.org/docs/governance>; read more on finos.org/press/finos-join-forces-os-open-source-climate-sustainability-esg <https://finos.org/press/finos-join-forces-os-open-source-climate-sustainability-esg>_
 
 =========================
-OSC Transformer Pre-Steps
+osc-transformer-presteps
 =========================
 
 |osc-climate-project| |osc-climate-slack| |osc-climate-github| |pypi| |pdm| |PyScaffold| |OpenSSF Scorecard|
 
-OS-Climate Transformer Pre-Steps Tool
-=====================================
+Overview
+--------
 
-.. _notes:
+| CLI utilities to:
+| Extract ``text/structure`` from PDFs into JSON.
+| Curate a labeled training dataset (CSV) from extracted JSON + human
+  annotations + KPI mapping.
+| Intended to feed downstream transformer models (relevance detector and
+  KPI detector) used by osc-transformer-based-extractor.
+| Works stand-alone for PDF JSON extraction and for dataset curation.
 
-This code provides you with a cli tool with the possibility to extract data from
-a pdf to a json document and to create a training data set for a later usage in the
-context of transformer models
-to extract relevant information, but it can also be used independently.
+Prerequisites
+-------------
 
-Quick start
-============
+| **OS:** Linux (commands below assume bash)
+| **Python:** 3.12
+| **Recommended:** run inside a virtual environment
+| **Disk space:** enough for your PDFs, extracted JSON, logs, and
+  curated CSV
 
-Install via PyPi
-----------------
+Installation
+------------
 
-You can simply install the package via::
+From PyPI (recommended for this tool):
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    $ pip install osc-transformer-presteps
+::
 
-Afterwards, you can use the tooling as a CLI tool by typing::
+   python3.12 -m venv venv_presteps
+   source venv_presteps/bin/activate
+   pip install --upgrade pip
+   pip install osc-transformer-presteps
+   deactivate
 
-    $ osc-transformer-presteps
+Demo materials If you want to use the demo inputs that ship with the
+repo:
 
-We are using Typer to provide a user-friendly CLI. All details and help will be shown within the CLI itself and are not described here in more detail.
+Clone just to copy demo inputs (optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Setting Up Folder Structure
----------------------------
+::
 
-To quickly set up the required folder structure, just run this command::
+   git clone https://github.com/os-climate/osc-transformer-presteps.git
 
-    $ osc-transformer-presteps make-folder-structure run-folder-structure-maker
+Create a working/demo folder structure
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This will automatically create the necessary folders for your project.
+::
 
+   mkdir -p demo/extraction/input
+   mkdir -p demo/extraction/output
+   mkdir -p demo/extraction/log
+   mkdir -p demo/curation/input
+   mkdir -p demo/curation/output
+   mkdir -p demo/curation/log
 
-Example 1: Extracting Data from PDFs
-------------------------------------
+Copy demo inputs
+~~~~~~~~~~~~~~~~
 
-Now, after installing ``osc-transformer-presteps``,and making into the folder-structure, move into the created folder.
-Finally, run the following command to extract data from the PDFs to JSON::
+::
 
-    $ osc-transformer-presteps extraction run-local-extraction 'input' --output-folder='output' --logs-folder='logs' --force
+   cp -r osc-transformer-presteps/demo/extraction/input demo/extraction/
+   cp -r osc-transformer-presteps/demo/curation/input demo/curation/
 
-Note: The ``--force`` flag overcomes encryption. Please check if this is a legal action in your jurisdiction.
+Quickstart
+----------
 
-Example 2: Curating a New Training Data Set for Relevance Detector
----------------------------------------------------------------------------
+1. Activate the environment:
 
-To perform curation, you will need a KPI mapping file and an annotations file. Here are examples of such files:
+::
 
-**KPI Mapping File**:
+   source venv_presteps/bin/activate
 
-.. list-table:: kpi_mapping.csv
-   :header-rows: 1
+2. Extract PDF(s) to JSON:
 
-   * - kpi_id
-     - question
-     - sectors
-     - add_year
-     - kpi_category
-   * - 0
-     - What is the company name?
-     - "OG, CM, CU"
-     - FALSE
-     - TEXT
+   -  Input folder contains one or more PDF files.
+   -  Output folder will receive one JSON per input PDF.
+   -  Logs folder will receive log files.
 
-* **kpi_id**: The unique identifier for each KPI.
-* **question**: The specific question being asked to extract relevant information.
-* **sectors**: The industry sectors to which the KPI applies.
-* **add_year**: Indicates whether to include the year in the extracted data (TRUE/FALSE).
-* **kpi_category**: The category of the KPI, typically specifying the data type (e.g., TEXT).
+::
 
-**Annotation File**:
+   cd demo/extraction
+   osc-transformer-presteps extraction run-local-extraction \
+     "input/" \
+     --output-folder="output/" \
+     --logs-folder="log/" \
+     --force
 
-.. list-table:: annotations_file.xlsx
-   :header-rows: 1
+**Notes:**
 
-   * - company
-     - source_file
-     - source_page
-     - kpi_id
-     - year
-     - answer
-     - data_type
-     - relevant_paragraphs
-     - annotator
-     - sector
-   * - Royal Dutch Shell plc
-     - Test.pdf
-     - [1]
-     - 1
-     - 2019
-     - 2019
-     - TEXT
-     - ["Sustainability Report 2019"]
-     - 1qbit_edited_kpi_extraction_Carolin.xlsx
-     - OG
+| ``--force`` can attempt extraction from restricted PDFs. Ensure this
+  is legal for your use case.
+| Typical output example: ``demo/extraction/output/Test_output.json``
 
-* **company**: The name of the company being analyzed.
-* **source_file**: The document from which data is extracted.
-* **source_page**: The page number(s) containing the relevant information.
-* **kpi_id**: The ID of the KPI associated with the data.
-* **year**: The year to which the data refers.
-* **answer**: The specific data or text extracted as an answer.
-* **data_type**: The type of the extracted data (e.g., TEXT or TABLE).
-* **relevant_paragraphs**: The paragraph(s) or context where the data was found.
-* **annotator**: The person or tool that performed the annotation.
-* **sector**: The industry sector the company belongs to.
+3. Curate a training dataset for the relevance detector:
 
+| **Requires:**
+| - Extracted JSON file(s)
+| - An annotation file (xlsx)
+| - A KPI mapping file (csv)
 
-You can find demo files in the ``demo/curation/input`` folder.
+::
 
-Assume the folder structure is as follows:
+   cd ../curation
 
-.. code-block:: text
+**Example:** bring one extracted JSON into curation input
 
-    project/
-    ├-input/
-    │ ├-data_from_extraction/
-    │ │ ├-file_1.json
-    │ │ ├-file_2.json
-    │ │ └─file_3.json
-    │ ├-kpi_mapping/
-    │ │ └─kpi_mapping.csv
-    │ ├-annotations_file/
-    │ │ └─annotations_file.xlsx
-    ├-logs/
-    └─output/
+::
 
-Now, you can run the following command to curate a new training data set::
+   cp ../extraction/output/Test_output.json `input/`
+   osc-transformer-presteps relevance-curation run-local-curation \
+     --create_neg_samples \
+     "input/Test_output.json" \
+     "input/test_annotations.xlsx" \
+     "input/kpi_mapping.csv" \
+     "output/"
 
-    $ osc-transformer-presteps relevance-curation run-local-curation 'input/-data_from_extraction/file_1.json' 'input/annotations_file/annotations_file.xlsx' 'input/kpi_mapping/kpi_mapping.csv'
+**Outputs**
 
-Note: The previous comment may need some adjustment when running on different machine like windows due to the slash.
+| A CSV named Curated_dataset.csv containing labeled samples for
+  training.
+| Known issue: Current version may ignore the output folder flag and
+  write ``Curated_dataset.csv`` into the current working directory. If
+  you don’t see it inside your specified ``output/``, check the working
+  directory.
 
+4. Deactivate the environment
 
-Example 3: Curating a New Training Data Set for KPI Detector
----------------------------------------------------------------------------
-To perform curation, you will need the extracted json files and kpi mappinf file and annotations file (the same as described above).
+``deactivate``
 
-Assume the folder structure is as follows:
+Command reference
+-----------------
 
-.. code-block:: text
+PDF Extraction
+~~~~~~~~~~~~~~
+
+::
+
+   osc-transformer-presteps extraction run-local-extraction \
+     <input_folder> \
+     --output-folder=<path> \
+     --logs-folder=<path> \
+     [--force]
 
-    project/
-    ├-input/
-    │ ├-data_from_extraction/
-    │ │ ├-file_1.json
-    │ │ ├-file_2.json
-    │ │ └─file_3.json
-    │ ├-kpi_mapping/
-    │ │ └─kpi_mapping.csv
-    │ ├-annotations_file/
-    │ │ └─annotations_file.xlsx
-    │ ├-relevance_detection_file/
-    │ │ └─relevance_detection.csv
-    ├-logs/
-    └─output/
+**Arguments:**
+
+``:`` directory with PDF files.
 
-Now, you can run the following command to curate a new training data set::
+``--output-folder:`` where JSON files are written.
 
-    $ osc-transformer-presteps kpi-curation run-local-kpi-curation  'input/annotations_file/' 'input/data_from_extraction/' 'output/' 'kpi_mapping/kpi_mapping_file.csv' 'relevance_detection_file/relevance_file.xlsx'  --val-ratio 0.2 --agg-annotation "" --find-new-answerable --create-unanswerable
+``--logs-folder:`` where logs are written.
 
-Note: The previous comment may need some adjustment when running on different machine like windows due to the slash.
+``--force:`` attempt extraction from encrypted PDFs (use responsibly).
 
-.. _Important Note on Annotations:
+Relevance Curation
+------------------
 
-Important Note on Annotations
--------------------------------
+::
 
-When performing curation, it is crucial that all JSON files used for this process are listed in the ``demo/curation/input/test_annotation.xlsx`` file. Failure to include these files in the annotation file will result in corrupted output.
+   osc-transformer-presteps relevance-curation run-local-curation \
+     [--create_neg_samples] \
+     <extracted_json_file> \
+     <annotations_file.xlsx> \
+     <kpi_mapping.csv> \
+     <output_folder>
 
-Ensure that every JSON file involved in the curation process is mentioned in the annotation file to maintain the integrity of the resulting output.
+Arguments:
+~~~~~~~~~~
 
+| : a JSON produced by the extraction step.
+| : human annotations. See “Input file formats” below.
+| : KPI definitions. See “Input file formats” below.
+| : target folder for outputs (note: current version may ignore and
+  write to CWD). Options:
+| ``--create_neg_samples``: generate negative examples (non-relevant
+  samples) in the curated dataset.
 
-Developer space
-================
+Input file formats (for curation)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use Code Directly Without CLI via Github Repository
------------------------------------------------------
+KPI mapping CSV (example columns):
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First, clone the repository to your local environment::
+| ``kpi_id``: unique KPI identifier
+| ``question``: the question/indicator to extract
+| ``sectors``: applicable sectors (e.g., "OG, CM, CU")
+| ``add_year``: TRUE/FALSE to add year
+| ``kpi_category``: data type/category (e.g., TEXT)
 
-    $ git clone https://github.com/os-climate/osc-transformer-presteps
+Annotation XLSX (example columns):
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We are using ``pdm`` to manage the packages and ``tox`` for a stable test framework.
-First, install ``pdm`` (possibly in a virtual environment) via::
+| ``company``: company name
+| ``source_file``: original document filename
+| ``source_page``: page numbers
+| ``kpi_id``: KPI identifier aligned to mapping
+| ``year``: year referenced
+| ``answer``: extracted answer text/value
+| ``data_type``: e.g., TEXT or TABLE
+| ``relevant_paragraphs``: supporting text/section(s)
+| ``annotator``: who annotated
+| ``sector``: applicable sector
 
-    $ pip install pdm
+Folder structure example
+------------------------
 
-Afterwards, sync your system via::
+::
 
-    $ pdm sync
+   your-project/  
+   ├─ venv_presteps/  
+   ├─ demo/  
+   │  ├─ extraction/  
+   │  │  ├─ input/                  # PDFs here  
+   │  │  ├─ output/                 # JSON output here  
+   │  │  └─ log/  
+   │  └─ curation/  
+   │     ├─ input/  
+   │     │  ├─ Test_output.json     # from extraction  
+   │     │  ├─ test_annotations.xlsx  
+   │     │  └─ kpi_mapping.csv  
+   │     ├─ output/                 # may be ignored by current version  
+   │     └─ log/  
 
-You will find multiple demos on how to proceed in the ``demo`` folder.
+Troubleshooting and tips
+------------------------
 
-pdm
----
+| **Curated_dataset.csv not in ``output/``:** Known issue — the tool may
+  write to the current working directory instead of the specified output
+  folder. Check your CWD.
+| \**Paths on Windows: \*\* If you run on Windows, adapt path separators
+  accordingly.
+| **Permissions:** If you see permission errors writing logs or outputs,
+  ensure the directories exist and are writable.
+| **Force flag legality:** Using ``--force`` to bypass PDF restrictions
+  may not be legal in some jurisdictions; ensure compliance.
 
-To add new dependencies, use ``pdm``. For example, you can add numpy via::
+Verify success:
+---------------
 
-    $ pdm add numpy
+| **Extraction:** JSON files present in ``output/`` and non-empty logs.
+| **Curation:** Curated_dataset.csv generated and contains expected
+  rows/columns.
 
-For more detailed descriptions, check the `PDM project homepage <https://pdm-project.org/en/latest/>`_.
+Development (optional)
+----------------------
 
-tox
----
+If you plan to develop or explore internals, the upstream repo provides
+demos and a PDM/pytest setup:
 
-For running linting tools, we use ``tox``. You can run this outside of your virtual environment::
+::
 
-    $ pip install tox
-    $ tox -e lint
-    $ tox -e test
+   git clone https://github.com/os-climate/osc-transformer-presteps
+   cd osc-transformer-presteps
+   pip install pdm tox
+   pdm sync
+   tox -e lint
+   tox -e test
 
-This will automatically apply checks on your code and run the provided pytests. See more details on `tox <https://tox.wiki/en/4.16.0/>`_.
+License and governance
+----------------------
 
-.. |osc-climate-project| image:: https://img.shields.io/badge/OS-Climate-blue
-  :alt: An OS-Climate Project
-  :target: https://os-climate.org/
-
-.. |osc-climate-slack| image:: https://img.shields.io/badge/slack-osclimate-brightgreen.svg?logo=slack
-  :alt: Join OS-Climate on Slack
-  :target: https://os-climate.slack.com
-
-.. |osc-climate-github| image:: https://img.shields.io/badge/GitHub-100000?logo=github&logoColor=white
-  :alt: Source code on GitHub
-  :target: https://github.com/os-climate/osc-transformer-presteps
-
-.. |pypi| image:: https://img.shields.io/pypi/v/osc-transformer-presteps.svg
-  :alt: PyPI package
-  :target: https://pypi.org/project/osc-transformer-presteps/
-
-.. |pdm| image:: https://img.shields.io/badge/PDM-Project-purple
-  :alt: Built using PDM
-  :target: https://pdm-project.org/latest/
-
-.. |PyScaffold| image:: https://img.shields.io/badge/-PyScaffold-005CA0?logo=pyscaffold
-  :alt: Project generated with PyScaffold
-  :target: https://pyscaffold.org/
-
-.. |OpenSSF Scorecard| image:: https://api.scorecard.dev/projects/github.com/os-climate/osc-transformer-presteps/badge
-  :alt: OpenSSF Scorecard
-  :target: https://scorecard.dev/viewer/?uri=github.com/os-climate/osc-transformer-presteps
+This project is part of the OS-Climate ecosystem. Please consult the
+repository for license and governance details.
