@@ -9,6 +9,7 @@ from osc_transformer_presteps.run_local_extraction import app as extraction
 from osc_transformer_presteps.run_local_relevance_curation import app as curation
 from osc_transformer_presteps.run_local_kpi_curation import kpi_curator_app
 from osc_transformer_presteps.run_local_folder_structure_maker import folderizer_app
+from osc_transformer_presteps.run_merge_output import app as merger_app
 
 # Define command structure with typer module
 app = typer.Typer(no_args_is_help=True)
@@ -40,6 +41,12 @@ app.add_typer(
     help="If you want to run local creation of dataset for kpi-detection task, then this is the subcommand to use.",
 )
 
+app.add_typer(
+    merger_app,
+    name="merge-output",
+    help="If you want to merge output from RB and TB method, then this is the subcommand to use.",
+)
+
 
 def run():
     """Provide main entry point for the OSC Transformer CLI application.
@@ -53,5 +60,12 @@ def run():
 
         To run local curation:
             osc_transformer_presteps curation
+
+        To make folder structure:
+            osc_transformer_presteps make-folder-structure
+
+        To run output merging:
+            osc_transformer_presteps merge-output
+
     """
     app()
