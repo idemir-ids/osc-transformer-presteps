@@ -160,11 +160,7 @@ def merge_output(
         help="Path to the second file (CSV or XLSX) to be combined. "
         "This should be in the current folder or some subfolder."
     ),
-    output_file: str = typer.Option(
-        default="combined_output.csv",
-        "--output",
-        "-o",
-        show_default=True,
+    output_file: str = typer.Argument(
         help="Path where the combined CSV file should be saved. "
         "Example: 'output/combined_data.csv'"
     ),

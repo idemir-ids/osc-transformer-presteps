@@ -44,6 +44,6 @@ def create_osc_folder_structure(base_path: str):
     print(f"Folder structure created successfully under: {osc_path}")
 
 
-create_osc_folder_structure(
-    r"C:\Users\Tanishq\Desktop\IDS_WORK\presteps\osc-transformer-presteps"
-)
+#create_osc_folder_structure(
+#    r"C:\Users\Tanishq\Desktop\IDS_WORK\presteps\osc-transformer-presteps"
+#)
