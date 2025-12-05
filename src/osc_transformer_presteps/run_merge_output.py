@@ -151,7 +151,7 @@ def combine_dataframes(df1, df2, sort_columns=False, drop_duplicates=False, colu
 
 
 @app.command()
-def merge_output(
+def run_merge_output(
     file_path1: str = typer.Argument(
         help="Path to the first file (CSV or XLSX) to be combined. "
         "This should be in the current folder or some subfolder."
