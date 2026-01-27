@@ -74,8 +74,12 @@ class Curator:
             This method assumes `extract_json` is a `Path` object pointing to a valid JSON file.
 
         """
-        with self.extract_json.open() as f:
-            return json.load(f)
+
+        try:
+            with self.extract_json.open() as f:
+                return json.load(f)
+        except:
+            return {"-1" : {}}
 
     @staticmethod
     def clean_text(text: str) -> str:
@@ -129,6 +133,7 @@ class Curator:
             or self.json_file_name.replace(".json", "")
             != row["source_file"].replace(".pdf", "")
             or row["data_type"] != "TEXT"
+            or row["source_page"] == "9999"
         ):
             return ([(None, "")], False)  # Return with in_json_flag as False
 
@@ -162,7 +167,8 @@ class Curator:
                 return [(None, sent if sent else "")], False
 
         # If no relevant paragraph found, return with in_json_flag as False
-        return ([(None, "")], False)
+        return ([(0, sent) for sent in sentences], False)
+        #return ([(None, "")], False)
 
     def _get_closest_paragraph(
         self, sentences: List[str], page_number: str
@@ -294,6 +300,11 @@ class Curator:
         df["source_page"] = df["source_page"].apply(
             lambda x: [str(p - 1) for p in ast.literal_eval(x)]
         )
+        
+        if self.json_file_name not in set(df['source_file'].str.replace(r'\.pdf$', '', case=False, regex=True)):
+            # add missing pdf as fake entry so we can get negative annotations
+            new_row = {'source_page': '9999', 'source_file': self.json_file_name[:-5] + '.pdf', 'relevant_paragraphs' : '["xxxxxx"]', 'data_type' : 'TEXT'}
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
         new_dfs: List[pd.DataFrame] = []
 

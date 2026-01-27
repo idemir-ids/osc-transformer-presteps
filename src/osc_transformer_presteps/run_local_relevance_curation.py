@@ -103,6 +103,10 @@ def run_local_curation(
     specify_root_logger(
         log_level=log_dict[LogLevel(log_level)], logs_folder=logs_folder
     )
+    
+    def get_distinct_source_files(xlsx_file):
+        df = pd.read_excel(xlsx_file)
+        return df['source_file'].str.replace(r'\.pdf$', '', case=False, regex=True).unique()
 
     def resolve_path(path_name: str, cwd: Path) -> Path:
         """Resolve a path as either absolute or relative to the current working directory."""
@@ -147,6 +151,8 @@ def run_local_curation(
         raise
 
     _logger.info("Curation started.")
+    
+    curated_files = []
 
     if extracted_json_temp.is_file():
         _logger.info(f"Processing file {extracted_json_temp.stem}.")
@@ -161,6 +167,7 @@ def run_local_curation(
         _logger.info(
             f"Added info from file {extracted_json_temp.stem}.json to the curation file."
         )
+        curated_files.append(f"{extracted_json_temp.stem}")
 
     elif extracted_json_temp.is_dir():
         files = [
@@ -179,12 +186,32 @@ def run_local_curation(
                 create_neg_samples=create_neg_samples,
                 neg_sample_rate=neg_sample_rate,
             )
+            curated_files.append(f"{file.stem}")
             curator_df = pd.concat([curator_df, temp_df], ignore_index=True)
             _logger.info(f"Added info from file {file.stem}.json to the curation file.")
 
+        _logger.info("Adding dummy files for annotations where source_file is missing . . .")
+        
+        missing_dummies = list(set(get_distinct_source_files(annotation_temp)) - set(curated_files))
+        
+        for file in missing_dummies:
+            _logger.info(f"Processing dummy {file}.")
+            temp_df = curate_one_file(
+                dir_extracted_json_name=Path(f"{file}_output"), #fake. doesnt exist
+                annotation_file_path=annotation_temp,
+                kpi_mapping_file_path=kpi_mapping_temp,
+                create_neg_samples=create_neg_samples,
+                neg_sample_rate=neg_sample_rate,
+            )
+            curated_files.append(f"{file}")
+            curator_df = pd.concat([curator_df, temp_df], ignore_index=True)
+            _logger.info(f"Added info from file {file}.json to the curation file.")
+    
         timestamp = datetime.now().strftime("%d%m%Y_%H%M")
         csv_filename = Path(output_path) / f"Curated_dataset_{timestamp}.csv"
         curator_df.to_csv(csv_filename, index=False)
+        
+    
 
     _logger.info("Curation ended.")
 
