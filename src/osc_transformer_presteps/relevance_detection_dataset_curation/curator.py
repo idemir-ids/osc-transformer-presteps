@@ -303,7 +303,7 @@ class Curator:
         
         if self.json_file_name not in set(df['source_file'].str.replace(r'\.pdf$', '', case=False, regex=True)):
             # add missing pdf as fake entry so we can get negative annotations
-            new_row = {'source_page': '9999', 'source_file': self.json_file_name[:-5] + '.pdf', 'relevant_paragraphs' : '["xxxxxx"]', 'data_type' : 'TEXT'}
+            new_row = {'source_page': '9999', 'source_file': self.json_file_name[:-5] + '.pdf', 'relevant_paragraphs' : '["xxxxxx"]', 'data_type' : 'TEXT', 'kpi_id' : '1'}
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
         new_dfs: List[pd.DataFrame] = []
@@ -360,7 +360,7 @@ class Curator:
                             }
                         )
                         combined_df = pd.concat(
-                            [row.to_frame().T.reset_index(drop=True), context_df],
+                            [pd.DataFrame([row] * len(context_df)).reset_index(drop=True), context_df.reset_index(drop=True)],
                             axis=1,
                         )
                         new_dfs.append(combined_df)
