@@ -133,7 +133,7 @@ class Curator:
             or self.json_file_name.replace(".json", "")
             != row["source_file"].replace(".pdf", "")
             or row["data_type"] != "TEXT"
-            or row["source_page"] == "9999"
+            or row["source_page"] == "[9999]" # magic page for filtering out negative dummies
         ):
             return ([(None, "")], False)  # Return with in_json_flag as False
 
@@ -301,10 +301,24 @@ class Curator:
             lambda x: [str(p - 1) for p in ast.literal_eval(x)]
         )
         
+        df['kpi_id'] = df['kpi_id'].astype(str)
+        df['kpi_id'] = df['kpi_id'].str.replace(r'\.0$', '', regex=True)
+        
+        possible_kpi_ids = df['kpi_id'].unique()
+        
         if self.json_file_name not in set(df['source_file'].str.replace(r'\.pdf$', '', case=False, regex=True)):
             # add missing pdf as fake entry so we can get negative annotations
-            new_row = {'source_page': '9999', 'source_file': self.json_file_name[:-5] + '.pdf', 'relevant_paragraphs' : '["xxxxxx"]', 'data_type' : 'TEXT', 'kpi_id' : '1'}
-            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            # Load the KPI mapping
+            kpi_df = pd.read_csv(
+                self.kpi_mapping_path, usecols=["kpi_id", "question"]
+            )
+            kpi_df['kpi_id'] = kpi_df['kpi_id'].astype(str)
+            kpi_df['kpi_id'] = kpi_df['kpi_id'].str.replace(r'\.0$', '', regex=True)
+            for i, kpi_row in kpi_df.iterrows():
+                kpi_id = kpi_row['kpi_id']
+                if kpi_id in possible_kpi_ids:
+                    new_row = {'source_page': '[9999]', 'source_file': self.json_file_name[:-5] + '.pdf', 'relevant_paragraphs' : '["xxxxxx"]', 'data_type' : 'TEXT', 'kpi_id' : kpi_id}
+                    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
         new_dfs: List[pd.DataFrame] = []
 
@@ -420,6 +434,9 @@ class Curator:
                 kpi_df = pd.read_csv(
                     self.kpi_mapping_path, usecols=["kpi_id", "question"]
                 )
+                kpi_df['kpi_id'] = kpi_df['kpi_id'].astype(str)
+                kpi_df['kpi_id'] = kpi_df['kpi_id'].str.replace(r'\.0$', '', regex=True)
+                new_df['kpi_id'] = new_df['kpi_id'].str.replace(r'\.0$', '', regex=True)
 
                 merged_df = pd.merge(new_df, kpi_df, on="kpi_id", how="left")
 
