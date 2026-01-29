@@ -1,5 +1,6 @@
 """Python script for extracting content from large pdf in desired format."""
 
+import signal
 import io
 import logging
 import re
@@ -16,6 +17,8 @@ from pypdf import PdfReader
 from .base_extractor import BaseExtractor
 
 _logger = logging.getLogger(__name__)
+
+PDF_TIMEOUT = 120 # 2 minutes
 
 
 def clean_text(text):
@@ -129,7 +132,7 @@ class PDFExtractor(BaseExtractor):
         """
         # pdfminer logger issue: https://stackoverflow.com/questions/29762706/warnings-on-pdfminer
         orig_level = _logger.level
-        logging.root.setLevel(logging.ERROR)
+        logging.root.setLevel(logging.WARNING)
         try:
             self._extraction_response.dictionary = {}
             extracted = False
@@ -148,21 +151,37 @@ class PDFExtractor(BaseExtractor):
                 device = TextConverter(rsrcmgr, retstr, laparams=laparams)
                 interpreter = PDFPageInterpreter(rsrcmgr, device)
 
-                with open(pdf_file, "rb") as fp:
-                    for page_number, page in enumerate(
-                        PDFPage.get_pages(fp, check_extractable=False)
-                    ):
-                        interpreter.process_page(page)
-                        data = retstr.getvalue()
-                        paragraphs_data = self.process_page(data)
-                        if len(paragraphs_data) == 0:
-                            continue
-                        idx = self.update_extraction_dict(
-                            idx, page_number, paragraphs_data, str(Path(pdf_file).name)
-                        )
-                        retstr.truncate(0)
-                        retstr.seek(0)
-                extracted = True
+
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("PDF processing exceeded timeout")
+
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(PDF_TIMEOUT)
+                pages_extracted = 0
+
+                try:
+                    with open(pdf_file, "rb") as fp:
+                        for page_number, page in enumerate(
+                            PDFPage.get_pages(fp, check_extractable=False)
+                        ):
+                            interpreter.process_page(page)
+                            data = retstr.getvalue()
+                            paragraphs_data = self.process_page(data)
+                            if len(paragraphs_data) == 0:
+                                continue
+                            idx = self.update_extraction_dict(
+                                idx, page_number, paragraphs_data, str(Path(pdf_file).name)
+                            )
+                            retstr.truncate(0)
+                            retstr.seek(0)
+                            pages_extracted = pages_extracted + 1
+                    extracted = True
+                except TimeoutError:
+                    _logger.warning(f"Timeout. Worked longer than {PDF_TIMEOUT} sec. Now I give up on {pdf_file}, keeping {pages_extracted} extracted pages.")
+                    extracted = pages_extracted > 0
+                finally:
+                    signal.alarm(0)  # Cancel the alarm
+    
             logging.root.setLevel(orig_level)
             _logger.debug("Pdf was accessible: " + str(pdf_accessibility))
             return extracted
