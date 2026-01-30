@@ -5,6 +5,7 @@ import os
 
 # External modules
 import typer
+import traceback
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -93,7 +94,10 @@ def standardize_header(df):
         'PREDICTED_ANSWER': 'VALUE',
         'PAGE': 'PAGE_NUM',
     }
-    df.columns = df.columns.str.upper()
+    try:
+        df.columns = df.columns.str.upper()
+    except:
+        pass # no columns (empty)
     df = df.rename(columns=MAP_TB_2_RB)
     
     return df
@@ -231,6 +235,7 @@ def run_merge_output(
         raise typer.Exit(code=1)
     except Exception as e:
         typer.secho(f"✗ Unexpected error: {e}", fg=typer.colors.RED, bold=True)
+        traceback.print_exc()  # This prints the full stack trace
         raise typer.Exit(code=1)
 
 
